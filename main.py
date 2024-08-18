@@ -152,7 +152,7 @@ async def dice_handler(message: Message) -> None:
         unluck_number = random.randint(10, 100)
         data["children"] = data["children"] + unluck_number
         save_database(data)
-        await message.answer(f"Вы проиграли! Альнур узнал о ваших намериниях и словил еще {unluck_number} детей!")
+        await message.answer(f"Вы проиграли! Альнур узнал о ваших намерениях и словил еще {unluck_number} детей!")
 
 
 @dp.message()
