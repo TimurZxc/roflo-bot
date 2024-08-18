@@ -112,9 +112,12 @@ async def get_me_handler(message: Message) -> None:
 
 @dp.message(Command('save_children'))
 async def save_children_handler(message: Message) -> None:
-    save_number = random.randint(1, 6)
     data = load_databese()
-
+    if data.get("children", -1) == 0:
+        await message.answer("Подвал пуст (пока)")
+        return
+    
+    save_number = random.randint(1, 6)
     data['save_number'] = save_number
     save_database(data)
     
@@ -125,9 +128,14 @@ async def dice_handler(message: Message) -> None:
     current_time = datetime.datetime.now(datetime.timezone.utc)
     user_cooldowns = load_cooldowns()   
     last_roll_time = user_cooldowns.get(message.from_user.id)
-    if last_roll_time and current_time < last_roll_time + COOLDOWN_PERIOD:
-        await message.answer("Подожди час перед тем, как снова бросить кубик!")
-        return
+    if last_roll_time:
+        cooldown_end_time = last_roll_time + COOLDOWN_PERIOD
+        if current_time < cooldown_end_time:
+            remaining_time = cooldown_end_time - current_time
+            remaining_minutes = remaining_time.total_seconds() // 60
+            remaining_seconds = remaining_time.total_seconds() % 60
+            await message.answer(f"Подожди {int(remaining_minutes)} минут и {int(remaining_seconds)} секунд!")
+            return
     
     user_cooldowns[message.from_user.id] = current_time
     
@@ -141,7 +149,7 @@ async def dice_handler(message: Message) -> None:
         else:
             await message.answer(f"Ахуеть, вы спасли детей! Похлопаем @{message.from_user.username}!")
     else:
-        unluck_number = random.randint(10, 20)
+        unluck_number = random.randint(10, 100)
         data["children"] = data["children"] + unluck_number
         save_database(data)
         await message.answer(f"Вы проиграли! Альнур узнал о ваших намериниях и словил еще {unluck_number} детей!")
