@@ -78,10 +78,15 @@ async def alnur_message_handler(message: Message):
     children_addition = random.randint(1, 10)
     data = load_databese()
 
-    children = data.get('children', -1) + children_addition
-    data["children"] = children
+    temp_children = data.get('temp_children', -1) + children_addition
+    data["temp_children"] = temp_children
+    data["children"] += children_addition
+    data["alnur_mesage_count"] = data.get("alnur_mesage_count", 0) + 1
     save_database(data)
-    await message.answer(f"Количество детей в подвале пополнено на {children_addition}")  
+    if data.get("alnur_mesage_count", 0) % 10 == 0:
+        data["temp_children"] = 0
+        save_database(data)
+        await message.answer(f"Количество детей в подвале пополнено на {temp_children}")  
 
 
 @dp.message(F.text == '#МыХотимТрахнутьАльнура!')
