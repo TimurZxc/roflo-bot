@@ -126,6 +126,10 @@ async def save_children_handler(message: Message) -> None:
 @dp.message(F.dice)
 async def dice_handler(message: Message) -> None:
     current_time = datetime.datetime.now(datetime.timezone.utc)
+    data = load_databese()
+    if data.get("children", -1) == 0:
+        await message.answer("Подвал пуст (пока)")
+        return
     user_cooldowns = load_cooldowns()   
     last_roll_time = user_cooldowns.get(message.from_user.id)
     if last_roll_time:
@@ -140,7 +144,6 @@ async def dice_handler(message: Message) -> None:
     user_cooldowns[message.from_user.id] = current_time
     
     save_cooldowns(user_cooldowns)
-    data = load_databese()
     if message.dice.value == data.get('save_number', -1):
         data["children"] = 0
         save_database(data)
