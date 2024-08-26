@@ -2,7 +2,6 @@ import asyncio
 import logging
 import sys
 import datetime
-import jwt
 from aiogram import Bot, Dispatcher, html, F
 from aiogram.types.web_app_info import WebAppInfo
 from aiogram.filters import CommandStart, Command
@@ -10,42 +9,16 @@ from aiogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup, M
 from config import TOKEN
 from aiogram.exceptions import TelegramBadRequest
 import random
-import json
+from utils import *
+from rps import register_handlers_rps
 
 # TOKEN = getenv("BOT_TOKEN")
 
 secret_key = '5d9bb8552c298f16adf7a7eaea27c8109ce1692d2cac4daee483902cbb7e878c'
-COOLDOWN_FILE = "user_cooldowns.json"
-DATABASE_FILE = "database.json"
-COOLDOWN_PERIOD = datetime.timedelta(hours=1)
+
 dp = Dispatcher()
 bot = Bot(token=TOKEN)
-def load_cooldowns():
-    try:
-        with open(COOLDOWN_FILE, "r") as f:
-            return {int(k): datetime.datetime.fromisoformat(v) for k, v in json.load(f).items()}
-    except FileNotFoundError:
-        return {}
-    except json.JSONDecodeError:
-        return {}
-
-# Save cooldown data to JSON file
-def save_cooldowns(cooldowns):
-    with open(COOLDOWN_FILE, "w") as f:
-        json.dump({k: v.isoformat() for k, v in cooldowns.items()}, f, indent=4)
-
-def load_databese():
-    try:
-        with open(DATABASE_FILE, "r") as f:
-            return json.load(f)
-    except FileNotFoundError:
-        return {}
-    except json.JSONDecodeError:
-        return {}
-    
-def save_database(data):
-    with open(DATABASE_FILE, "w") as f:
-        json.dump(data, f, indent=4)
+register_handlers_rps(dp)
 
 @dp.message(CommandStart())
 async def command_start_handler(message: Message) -> None:
@@ -54,27 +27,18 @@ async def command_start_handler(message: Message) -> None:
     except TelegramBadRequest:
         print('Trigger form group')
 
-# @dp.message(CommandStart())
-# async def command_start_handler(message: Message) -> None:
-#     payload = {
-#         'tg_user_id': message.from_user.id,
-#         'tg_username': message.from_user.username,
-#         'exp': str(datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=2)) 
-#     }
-#     jwt_token = jwt.encode(payload, secret_key, algorithm='HS256')
-#     markup = InlineKeyboardMarkup(inline_keyboard=[[InlineKeyboardButton(text='Launch Datester', web_app=WebAppInfo(url="https://datester-front.vercel.app/"))]])
-#     try:
-#         await message.answer(f"ALNUR KUPBAYEV!", reply_markup=markup)
-#     except TelegramBadRequest:
-#         print('Trigger form group')
 
 @dp.message(Command('basement'))
 async def basement_handler(message: Message) -> None:
     data = load_databese()
     await message.answer(f"Детей в подвале: {data.get('children', -1)}")
 
+
 @dp.message(F.from_user.username == "awertkx")
 async def alnur_message_handler(message: Message):
+    if check_private_chat(message):
+        await message.answer(f"СУка кто пишет в лс тот педик ебаный")
+        return
     children_addition = random.randint(1, 10)
     data = load_databese()
 
@@ -91,13 +55,18 @@ async def alnur_message_handler(message: Message):
 
 @dp.message(F.text == '#МыХотимТрахнутьАльнура!')
 async def trah_message_handler(message: Message):
+    if check_private_chat(message):
+        await message.answer(f"СУка кто пишет в лс тот педик ебаный")
+        return
     data = load_databese()
-    
     data['trah'] = True
     save_database(data)
 
 @dp.message(F.text == '#МожешьОтдохнутьАльнур')
 async def trah_end_message_handler(message: Message):
+    if check_private_chat(message):
+        await message.answer(f"СУка кто пишет в лс тот педик ебаный")
+        return
     data = load_databese()
 
     data['trah'] = False
@@ -117,6 +86,9 @@ async def get_me_handler(message: Message) -> None:
 
 @dp.message(Command('save_children'))
 async def save_children_handler(message: Message) -> None:
+    if check_private_chat(message):
+        await message.answer(f"СУка кто пишет в лс тот педик ебаный")
+        return
     data = load_databese()
     if data.get("children", -1) == 0:
         await message.answer("Подвал пуст (пока)")
@@ -130,39 +102,68 @@ async def save_children_handler(message: Message) -> None:
 
 @dp.message(F.dice)
 async def dice_handler(message: Message) -> None:
+    if check_private_chat(message):
+        await message.answer(f"СУка кто пишет в лс тот педик ебаный")
+        return
     current_time = datetime.datetime.now(datetime.timezone.utc)
     data = load_databese()
     if data.get("children", -1) == 0:
         await message.answer("Подвал пуст (пока)")
         return
-    user_cooldowns = load_cooldowns()   
-    last_roll_time = user_cooldowns.get(message.from_user.id)
+    users = load_users()
+    if message.from_user.id not in users:
+        create_user(message.from_user.id)
+        users = load_users()
+
+    user_id = message.from_user.id
+    
+    user_data = users.get(user_id, {})
+    last_roll_time = user_data.get("cooldown_time")
     if last_roll_time:
         cooldown_end_time = last_roll_time + COOLDOWN_PERIOD
         if current_time < cooldown_end_time:
-            remaining_time = cooldown_end_time - current_time
-            remaining_minutes = remaining_time.total_seconds() // 60
-            remaining_seconds = remaining_time.total_seconds() % 60
-            await message.answer(f"Подожди {int(remaining_minutes)} минут и {int(remaining_seconds)} секунд!")
-            return
+            if user_data.get("free_spins", 0) > 0:
+                user_data["free_spins"] -= 1
+                current_time = user_data.get("cooldown_time")
+                await message.answer(f"@{message.from_user.username} потратил 1 фриспин! Осталось {user_data['free_spins']} фриспинов!")
+            else:
+                remaining_time = cooldown_end_time - current_time
+                remaining_minutes = remaining_time.total_seconds() // 60
+                remaining_seconds = remaining_time.total_seconds() % 60
+                await message.answer(f"Подожди {int(remaining_minutes)} минут и {int(remaining_seconds)} секунд!")
+                return
     
-    user_cooldowns[message.from_user.id] = current_time
+    users[user_id] = {
+        "cooldown_time": current_time,
+        "free_spins": user_data.get("free_spins", 0)  # Keep the existing some_int or initialize to 0
+    } 
     
-    save_cooldowns(user_cooldowns)
+    save_users(users)
     if message.dice.value == data.get('save_number', -1):
+        print_children = data.get("children", -1)
         data["children"] = 0
         save_database(data)
         if message.from_user.username == "awertkx":
             await message.answer("Ебать, Альнур решил отпустить своих заключенных, видимо сбор намечается.")
         else:
-            await message.answer(f"Ахуеть, вы спасли детей! Похлопаем @{message.from_user.username}!")
+            if message.from_user.username:
+                await message.answer(f"Ахуеть, вы спасли {print_children} детей! Похлопаем @{message.from_user.username}!")
+            else:
+                await message.answer(f"Ахуеть, вы спасли {print_children} детей! Алим бля тег себе сделай заебал уже.")
     else:
         unluck_number = random.randint(10, 100)
         data["children"] = data["children"] + unluck_number
         save_database(data)
         await message.answer(f"Вы проиграли! Альнур узнал о ваших намерениях и словил еще {unluck_number} детей!")
 
+@dp.message(Command('/duel_with_alnur'))
+async def alnur_duel_handler(message: Message) -> None:
+    try:
 
+        await message.answer("ПАШОЛ НАУХЙ")
+    except:
+        print('Help exception')
+        
 @dp.message()
 async def echo_handler(message: Message) -> None: 
     data = load_databese()
@@ -171,7 +172,6 @@ async def echo_handler(message: Message) -> None:
         await asyncio.sleep(60)
     
         await bot.delete_message(chat_id=response.chat.id, message_id=response.message_id)
-
 
 async def main() -> None:
     await dp.start_polling(bot)
