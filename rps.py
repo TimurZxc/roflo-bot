@@ -162,8 +162,11 @@ async def cancel_rps_handler(message: Message) -> None:
         await message.answer(f"СУка кто пишет в лс тот педик ебаный")
         return
     if message.chat.id in game_sessions:
-        del game_sessions[message.chat.id]
-        await message.answer("Игра отменена")
+        if game_sessions[message.chat.id]['player1'] == message.from_user.id or game_sessions[message.chat.id]['player2'] == message.from_user.id:
+            del game_sessions[message.chat.id]
+            await message.answer("Игра отменена")
+        else:
+            await message.answer("Вы не игрок этой игры!")
     else:
         await message.answer("Нет игры для отмены")
 
