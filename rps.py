@@ -4,7 +4,8 @@ from aiogram.filters import Command
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 import datetime
 import asyncio
-from utils import load_users, check_private_chat, save_users, create_user, delete_message_later
+import random
+from utils import load_users, check_private_chat, save_users, create_user, delete_message_later, load_database, save_database
 from bot import bot
 
 # Game session storage
@@ -234,7 +235,11 @@ async def callback_rps_choice_handler(callback_query: CallbackQuery) -> None:
             msg = await callback_query.message.answer(f"@{session['player1_username']} проебал, и получает -3 фри спина + статус педик")
             asyncio.create_task(delete_message_later(msg))
         else:
-            msg = await callback_query.message.answer("Ничья! Оба получают -2 фриспина")
+            data = load_database()
+            unluck_number = random.randint(10, 100)
+            data["children"] = data["children"] + unluck_number
+            save_database(data)
+            msg = await callback_query.message.answer(f"Ничья! Оба получают -2 фриспина, а Aльнур выходит на охоту и ловит {unluck_number}")
             game_ender(session['player1'], session["player1_username"], session['player2'], session["player2_username"], True)
             asyncio.create_task(delete_message_later(msg))
         if session['buttons_message']:

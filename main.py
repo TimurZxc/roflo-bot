@@ -119,7 +119,7 @@ async def help_handler(message: Message) -> None:
     emojis = ["🥇", "🥈", "🥉"]
     for index, (_, data) in enumerate(sorted_users):
         emoji = emojis[index] if index < 3 else "       "
-        response_text += f"{emoji} @{data.get('user_name', "Unknown")}: {data.get('save_score', -1)} детей\n"
+        response_text += f"{emoji} @{data.get('user_name', 'Unknown')}: {data.get('save_score', -1)} детей\n"
     
     response = await message.answer(response_text)
     await asyncio.sleep(60)

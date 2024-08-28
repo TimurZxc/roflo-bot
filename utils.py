@@ -58,7 +58,7 @@ def save_users(json_data):
             } for k, v in json_data.items()
         }, f, indent=4)
 
-def load_databese():
+def load_database():
     try:
         with open(DATABASE_FILE, "r") as f:
             return json.load(f)
