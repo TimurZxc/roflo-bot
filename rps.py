@@ -2,7 +2,7 @@ from aiogram import Dispatcher
 from aiogram.filters import Command
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 import datetime
-from utils import load_users, check_private_chat, save_users, create_user
+from utils import load_users, check_private_chat, save_users, create_user, delete_message_later
 
 # Game session storage
 game_sessions = {}
@@ -45,6 +45,7 @@ async def start_rps_handler(message: Message) -> None:
                                       'player2_username': None}
 
     await message.answer(f"@{message.from_user.username} начал КНБ! Чтобы принять вызов - /rps_join.")
+    
 
 async def join_rps_handler(message: Message) -> None:
     if check_private_chat(message):

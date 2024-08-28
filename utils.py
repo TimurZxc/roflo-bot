@@ -1,11 +1,16 @@
 import datetime
 import json
+import asyncio
+from aiogram.types import Message
 
 COOLDOWN_FILE = "user_cooldowns.json"
 DATABASE_FILE = "database.json"
 COOLDOWN_PERIOD = datetime.timedelta(hours=1)
 
-
+async def delete_message_later(message: Message, delay: int = 60):
+    await asyncio.sleep(delay)
+    await message.delete()
+    
 def create_user(user_id):
     users = load_users()
     users[user_id] = {
