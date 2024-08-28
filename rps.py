@@ -1,24 +1,45 @@
 from aiogram import Dispatcher
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command
 from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, CallbackQuery
 import datetime
+import asyncio
 from utils import load_users, check_private_chat, save_users, create_user, delete_message_later
+from bot import bot
 
 # Game session storage
 game_sessions = {}
 
-def give_reward(player_id):
+def game_ender(winer_id,winer_username, loser_id,loser_username, tie):
     users = load_users()
-    print(users)
-
-    if player_id in users:
-        users[player_id]['free_spins'] += 3
+    if tie:
+        if winer_id in users:
+            users[winer_id]['free_spins'] -= 2
+        else:
+            users = create_user(winer_id, winer_username)
+            users[winer_id]['free_spins'] -= 2
+        if loser_id in users:
+            users[loser_id]['free_spins'] -= 2
+        else:
+            users = create_user(loser_id, loser_username)
+            users[loser_id]['free_spins'] -= 2
+        save_users(users)
+        return   
+    if winer_id in users:
+        users[winer_id]['free_spins'] += 3
+        users[winer_id]['rps_streak'] += 1
     else:
-        users = create_user(player_id)
-        users[player_id]['free_spins'] += 3
+        users = create_user(winer_id, winer_username)
+        users[winer_id]['free_spins'] += 3
+        users[winer_id]['rps_streak'] += 1
+    if loser_id in users:
+        users[loser_id]['free_spins'] -= 3
+        users[loser_id]['rps_streak'] = 0.5
+    else:
+        users = create_user(loser_id, loser_username)
+        users[loser_id]['free_spins'] = 0
+        users[loser_id]['rps_streak'] = 0.5
     save_users(users)
-    print(users, "\n",  users[player_id]['free_spins'])
-
 def determine_winner(choice1, choice2):
     if choice1 == choice2:
         return None
@@ -36,39 +57,100 @@ async def start_rps_handler(message: Message) -> None:
     if message.chat.id in game_sessions:
         await message.answer("Игра уже в процессе!")
         return
+    member = await bot.get_chat_member(message.chat.id, message.from_user.id)
 
+    if member.status != 'administrator' and member.status != 'creator':    
+        await bot.promote_chat_member(
+            chat_id=message.chat.id,
+            user_id=message.from_user.id,
+            can_change_info=True,
+            can_delete_messages=False,
+            can_invite_users=True,
+            can_restrict_members=False,
+            can_pin_messages=False,
+            can_promote_members=False,
+            can_manage_video_chats=False,
+            is_anonymous=False 
+        )
     game_sessions[message.chat.id] = {'player1': message.from_user.id, 
                                       'player2': None, 
                                       'player1_choice': None, 
                                       'player2_choice': None,
                                       'player1_username': message.from_user.username,
                                       'player2_username': None}
-
-    await message.answer(f"@{message.from_user.username} начал КНБ! Чтобы принять вызов - /rps_join.")
     
+    msg = await message.answer(f"@{message.from_user.username} начал КНБ! Чтобы принять вызов - /rps_join.")
+    asyncio.create_task(delete_message_later(msg))
+
+
+async def rps_status_handler(message: Message) -> None:
+    session = game_sessions.get(message.chat.id)
+    if check_private_chat(message):
+        await message.answer("СУка кто пишет в лс тот педик ебаный")
+        return 
+
+    if message.chat.id not in game_sessions:
+        msg = await message.answer("Нет активных игр! Начните игру с /rps_start")
+        asyncio.create_task(delete_message_later(msg))
+    else:
+        if not session['player2']:
+            msg =await message.answer(f"@{session['player1_username']} в ожидании соперника! Чтобы принять вызов - /rps_join.")
+            asyncio.create_task(delete_message_later(msg))
+        elif session['player2']:
+            msg = await message.answer(f"@{session['player1_username']} и @{session['player2_username']} в игрe!")
+            asyncio.create_task(delete_message_later(msg))
+            if session['player1_choice']:
+                msg = await message.answer(f"@{session['player1_username']} выбрал!")
+                asyncio.create_task(delete_message_later(msg))
+            else:
+                msg = await message.answer(f"@{session['player1_username']} еще нихуя не выбрал!")
+                asyncio.create_task(delete_message_later(msg))
+            if session['player2_choice']:
+                msg = await message.answer(f"@{session['player2_username']} выбрал!")
+                asyncio.create_task(delete_message_later(msg))
+            else:
+                msg = await message.answer(f"@{session['player2_username']} еще нихуя не выбрал!")
+                asyncio.create_task(delete_message_later(msg))
 
 async def join_rps_handler(message: Message) -> None:
     if check_private_chat(message):
         await message.answer("СУка кто пишет в лс тот педик ебаный")
         return
     session = game_sessions.get(message.chat.id)
+    
 
     if not session:
-        await message.answer("Нету активных игр! Начните игру с /rps_start")
+        msg = await message.answer("Нету активных игр! Начните игру с /rps_start")
+        asyncio.create_task(delete_message_later(msg))
         return
 
     if session['player2']:
-        await message.answer("В этой игре уже 2 игрока!")
+        msg = await message.answer("В этой игре уже 2 игрока!")
+        asyncio.create_task(delete_message_later(msg))
         return
     if message.from_user.id == session['player1']:
-        await message.answer(f"@{message.from_user.username} уже в игре сука!")
+        msg = await message.answer(f"@{message.from_user.username} уже в игре сука!")
+        asyncio.create_task(delete_message_later(msg))
         return
-
+    member = await bot.get_chat_member(message.chat.id, message.from_user.id)
+    if member.status != 'administrator' and member.status != 'creator':    
+        await bot.promote_chat_member(
+            chat_id=message.chat.id,
+            user_id=message.from_user.id,
+            can_change_info=True,
+            can_delete_messages=False,
+            can_invite_users=True,
+            can_restrict_members=False,
+            can_pin_messages=True,
+            can_promote_members=False,
+            can_manage_video_chats=False,
+            is_anonymous=False 
+        )
     session['player2'] = message.from_user.id
     session['player2_username'] = message.from_user.username
-    await message.answer(f"@{session['player2_username']} вошел в игру! Оба игрока должны сделать свой выбор.")
+    msg = await message.answer(f"@{session['player2_username']} вошел в игру! Оба игрока должны сделать свой выбор.")
+    asyncio.create_task(delete_message_later(msg))
 
-    # Send buttons to both players to make their choice
     choice_buttons = choice_buttons = InlineKeyboardMarkup(inline_keyboard=[
         [
             InlineKeyboardButton(text="🪨", callback_data="rps_choice_камень"),
@@ -77,85 +159,86 @@ async def join_rps_handler(message: Message) -> None:
         ]
     ])
 
-    await message.answer(f"@{session['player1_username']} и @{session['player2_username']}, нажмите кнопки бля", reply_markup=choice_buttons)
+    buttons_msg = await message.answer(f"@{session['player1_username']} и @{session['player2_username']}, нажмите кнопки бля", reply_markup=choice_buttons)
+    session['buttons_message'] = buttons_msg
 
-async def choice_rps_handler(message: Message) -> None:
-    if check_private_chat(message):
-        await message.answer(f"СУка кто пишет в лс тот педик ебаный")
-        return
-    session = game_sessions.get(message.chat.id)
-
-    if not session:
-        await message.answer("Нету активных игр! Начните игру с /rps_start")
-        return
-
-    player_id = message.from_user.id
-    if player_id != session['player1'] and player_id != session['player2']:
-        await message.answer("Вы не игрок этой игры!")
-        return
-    if len(message.text.split()) < 2:
-        await message.answer("Неверно введена команда блять нахуй блять, надо - /rps_choice камень | ножницы | бумага")
-        return
-    else:
-        choice = message.text.split()[1].lower()
-        
-    if choice not in ['камень', 'ножницы', 'бумага']:
-        await message.answer("Еблан?")
-        return
-
-    if player_id == session['player1']:
-        session['player1_choice'] = choice
-        await message.answer(f"@{session['player1_username']} выбрал!")
-    elif player_id == session['player2']:
-        session['player2_choice'] = choice
-        await message.answer(f"@{session['player2_username']} выбрал!")
-
-    if session['player1_choice'] and session['player2_choice']:
-        winner = determine_winner(session['player1_choice'], session['player2_choice'])
-        print(winner, session['player1_choice'], session['player2_choice'])
-        if winner == 'player1':
-            give_reward(session['player1'])
-            await message.answer(f"@{session['player1_username']} победил, и получает 3 фри спина!")
-        elif winner == 'player2':
-            give_reward(session['player2'])
-            await message.answer(f"@{session['player2_username']} победил, и получает 3 фри спина!")
-        else:
-            await message.answer("Ничья!")
-
-        del game_sessions[message.chat.id]  # End the game session after the result
 async def callback_rps_choice_handler(callback_query: CallbackQuery) -> None:
     session = game_sessions.get(callback_query.message.chat.id)
     player_id = callback_query.from_user.id
 
     if not session:
-        await callback_query.answer("Нет активных игр! Начните игру с /rps_start", show_alert=True)
+        msg = await callback_query.answer("Нет активных игр! Начните игру с /rps_start", show_alert=True)
+        asyncio.create_task(delete_message_later(msg))
         return
 
     if player_id != session['player1'] and player_id != session['player2']:
-        await callback_query.answer("Ты не игрок этой игры!", show_alert=True)
+        msg = await callback_query.answer("Ты не игрок этой игры!", show_alert=True)
+        asyncio.create_task(delete_message_later(msg))
         return
 
-    choice = callback_query.data.split("_")[2]  # Extracting the choice from callback data
+    choice = callback_query.data.split("_")[2]
 
     if player_id == session['player1']:
         session['player1_choice'] = choice
-        await callback_query.message.answer(f"@{session['player1_username']} выбрал!")
+        msg = await callback_query.message.answer(f"@{session['player1_username']} выбрал!")
+        asyncio.create_task(delete_message_later(msg))
     elif player_id == session['player2']:
         session['player2_choice'] = choice
-        await callback_query.message.answer(f"@{session['player2_username']} выбрал!")
+        msg = await callback_query.message.answer(f"@{session['player2_username']} выбрал!")
+        asyncio.create_task(delete_message_later(msg))
 
-    # Check if both players have made their choice
     if session['player1_choice'] and session['player2_choice']:
         winner = determine_winner(session['player1_choice'], session['player2_choice'])
         if winner == 'player1':
-            give_reward(session['player1'])
-            await callback_query.message.answer(f"@{session['player1_username']} победил, и получает 3 фри спина!")
+            try:
+                await bot.set_chat_administrator_custom_title(
+                    chat_id=callback_query.message.chat.id,
+                    user_id=session['player2'],
+                    custom_title="Педик"
+                )
+            except TelegramBadRequest:
+                print(TelegramBadRequest)
+            try:
+                await bot.set_chat_administrator_custom_title(
+                    chat_id=callback_query.message.chat.id,
+                    user_id=session['player1'],
+                    custom_title="admin"
+                )
+            except TelegramBadRequest:
+                print(TelegramBadRequest)
+            game_ender(session['player1'],session["player1_username"], session['player2'],session["player2_username"], False)
+            msg = await callback_query.message.answer(f"@{session['player1_username']} победил, и получает 3 фри спина!")
+            asyncio.create_task(delete_message_later(msg))
+            msg = await callback_query.message.answer(f"@{session['player2_username']} проебал, и получает -3 фри спина + статус педик")
+            asyncio.create_task(delete_message_later(msg))
         elif winner == 'player2':
-            give_reward(session['player2'])
-            await callback_query.message.answer(f"@{session['player2_username']} победил, и получает 3 фри спина!")
+            try:
+                await bot.set_chat_administrator_custom_title(
+                    chat_id=callback_query.message.chat.id,
+                    user_id=session['player1'],
+                    custom_title="Педик"
+                )
+            except TelegramBadRequest:
+                print(TelegramBadRequest)
+            try:
+                await bot.set_chat_administrator_custom_title(
+                    chat_id=callback_query.message.chat.id,
+                    user_id=session['player2'],
+                    custom_title="admin"
+                )
+            except TelegramBadRequest:
+                print(TelegramBadRequest)
+            game_ender(session['player2'],session["player2_username"], session['player1'],session["player1_username"], False)
+            msg = await callback_query.message.answer(f"@{session['player2_username']} победил, и получает 3 фри спина!")
+            asyncio.create_task(delete_message_later(msg))
+            msg = await callback_query.message.answer(f"@{session['player1_username']} проебал, и получает -3 фри спина + статус педик")
+            asyncio.create_task(delete_message_later(msg))
         else:
-            await callback_query.message.answer("Ничья!")
-
+            msg = await callback_query.message.answer("Ничья! Оба получают -2 фриспина")
+            game_ender(session['player1'], session["player1_username"], session['player2'], session["player2_username"], True)
+            asyncio.create_task(delete_message_later(msg))
+        if session['buttons_message']:
+            asyncio.create_task(delete_message_later(session['buttons_message'], 5))
         del game_sessions[callback_query.message.chat.id] 
     await callback_query.answer()  
 async def cancel_rps_handler(message: Message) -> None:
@@ -165,16 +248,20 @@ async def cancel_rps_handler(message: Message) -> None:
     if message.chat.id in game_sessions:
         if game_sessions[message.chat.id]['player1'] == message.from_user.id or game_sessions[message.chat.id]['player2'] == message.from_user.id:
             del game_sessions[message.chat.id]
-            await message.answer("Игра отменена")
+            msg = await message.answer("Игра отменена")
+            asyncio.create_task(delete_message_later(msg))
         else:
-            await message.answer("Вы не игрок этой игры!")
+            msg = await message.answer("Вы не игрок этой игры!")
+            asyncio.create_task(delete_message_later(msg))
     else:
-        await message.answer("Нет игры для отмены")
+        msg = await message.answer("Нет игры для отмены")
+        asyncio.create_task(delete_message_later(msg))
 
 # Function to register all handlers
 def register_handlers_rps(dp: Dispatcher):
     dp.message.register(start_rps_handler, Command('rps_start'))
     dp.message.register(join_rps_handler, Command('rps_join'))
-    dp.message.register(choice_rps_handler, Command('rps_choice'))
+    # dp.message.register(choice_rps_handler, Command('rps_choice'))
     dp.message.register(cancel_rps_handler, Command('rps_cancel'))
+    dp.message.register(rps_status_handler, Command('rps_status'))
     dp.callback_query.register(callback_rps_choice_handler, lambda c: c.data and c.data.startswith("rps_choice_"))

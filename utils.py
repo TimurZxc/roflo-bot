@@ -2,6 +2,7 @@ import datetime
 import json
 import asyncio
 from aiogram.types import Message
+from bot import bot
 
 COOLDOWN_FILE = "user_cooldowns.json"
 DATABASE_FILE = "database.json"
@@ -10,12 +11,16 @@ COOLDOWN_PERIOD = datetime.timedelta(hours=1)
 async def delete_message_later(message: Message, delay: int = 60):
     await asyncio.sleep(delay)
     await message.delete()
+
     
-def create_user(user_id):
+def create_user(user_id, user_name):
     users = load_users()
     users[user_id] = {
         "cooldown_time": datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(hours=1),
-        "free_spins": 0
+        "free_spins": 0,
+        "save_score": 0,
+        "rps_streak": 0.5,
+        "user_name": user_name
     }
     save_users(users)
     return users
@@ -30,7 +35,10 @@ def load_users():
             cooldowns = json.load(f)
             return {int(k): {
                         "cooldown_time": datetime.datetime.fromisoformat(v["cooldown_time"]),
-                        "free_spins": v["free_spins"]
+                        "free_spins": v["free_spins"],
+                        "save_score": v["save_score"],
+                        "rps_streak": v["rps_streak"],
+                        "user_name": v["user_name"]
                     } for k, v in cooldowns.items()}
     except FileNotFoundError:
         return {}
@@ -43,7 +51,10 @@ def save_users(json_data):
         json.dump({
             k: {
                 "cooldown_time": v["cooldown_time"].isoformat(),
-                "free_spins": v["free_spins"]
+                "free_spins": max(v["free_spins"], 0),
+                "save_score": max(v["save_score"], 0),
+                "rps_streak": max(v["rps_streak"], 0),
+                "user_name": v["user_name"]
             } for k, v in json_data.items()
         }, f, indent=4)
 

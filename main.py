@@ -11,13 +11,13 @@ from aiogram.exceptions import TelegramBadRequest
 import random
 from utils import *
 from rps import register_handlers_rps
+from bot import bot
 
 # TOKEN = getenv("BOT_TOKEN")
 
 secret_key = '5d9bb8552c298f16adf7a7eaea27c8109ce1692d2cac4daee483902cbb7e878c'
 
 dp = Dispatcher()
-bot = Bot(token=TOKEN)
 register_handlers_rps(dp)
 
 @dp.message(CommandStart())
@@ -100,6 +100,39 @@ async def save_children_handler(message: Message) -> None:
     
     await message.answer(f"Чтобы спасти детей выбейте {save_number} на кубике!")
 
+@dp.message(Command('my_save_score'))
+async def help_handler(message: Message) -> None:
+    try:
+        users = load_users()
+        response = await message.answer(f"Ты спас {users.get(message.from_user.id, {}).get('save_score', -1)} детей")
+        await asyncio.sleep(60)
+    
+        await bot.delete_message(chat_id=response.chat.id, message_id=response.message_id)
+    except:
+        print('my_save_score exception')
+        
+@dp.message(Command('save_leaderboard'))
+async def help_handler(message: Message) -> None:
+    users = load_users()
+    sorted_users = sorted(users.items(), key=lambda x: x[1]['save_score'], reverse=True)
+    response_text = "🏅 Топ спасителей:\n\n"
+    emojis = ["🥇", "🥈", "🥉"]
+    for index, (_, data) in enumerate(sorted_users):
+        emoji = emojis[index] if index < 3 else "       "
+        response_text += f"{emoji} @{data.get('user_name', "Unknown")}: {data.get('save_score', -1)} детей\n"
+    
+    response = await message.answer(response_text)
+    await asyncio.sleep(60)
+
+    await bot.delete_message(chat_id=response.chat.id, message_id=response.message_id)
+
+@dp.message(Command('my_rps_streak'))
+async def help_handler(message: Message) -> None:
+    users = load_users()
+    response = await message.answer(f"Твой стрик в КНБ: {users[message.from_user.id].get('rps_streak', 0.5)-0.5}")
+    await asyncio.sleep(60)
+
+    await bot.delete_message(chat_id=response.chat.id, message_id=response.message_id)
 @dp.message(F.dice)
 async def dice_handler(message: Message) -> None:
     if check_private_chat(message):
@@ -112,9 +145,7 @@ async def dice_handler(message: Message) -> None:
         return
     users = load_users()
     if message.from_user.id not in users:
-        create_user(message.from_user.id)
-        users = load_users()
-
+        users = create_user(message.from_user.id, message.from_user.username)
     user_id = message.from_user.id
     
     user_data = users.get(user_id, {})
@@ -123,7 +154,7 @@ async def dice_handler(message: Message) -> None:
         cooldown_end_time = last_roll_time + COOLDOWN_PERIOD
         if current_time < cooldown_end_time:
             if user_data.get("free_spins", 0) > 0:
-                user_data["free_spins"] -= 1
+                users[user_id]["free_spins"] -= 1
                 current_time = user_data.get("cooldown_time")
                 await message.answer(f"@{message.from_user.username} потратил 1 фриспин! Осталось {user_data['free_spins']} фриспинов!")
             else:
@@ -132,37 +163,34 @@ async def dice_handler(message: Message) -> None:
                 remaining_seconds = remaining_time.total_seconds() % 60
                 await message.answer(f"Подожди {int(remaining_minutes)} минут и {int(remaining_seconds)} секунд!")
                 return
+    users[user_id]["cooldown_time"] = current_time
     
-    users[user_id] = {
-        "cooldown_time": current_time,
-        "free_spins": user_data.get("free_spins", 0)  # Keep the existing some_int or initialize to 0
-    } 
-    
-    save_users(users)
     if message.dice.value == data.get('save_number', -1):
-        print_children = data.get("children", -1)
-        data["children"] = 0
-        save_database(data)
+        precent = int((users.get(user_id, {}).get("rps_streak", 1) / 10) * 100)
+        if precent > 100:
+            print_children = data.get("children")
+        else:
+            print_children = int(data["children"] * (users.get(user_id, {}).get("rps_streak", 1) / 10))
+        data["children"] -= print_children
+        save_score = users[user_id].get("save_score", 0) + print_children
+        users[user_id]["save_score"] = save_score
+        users[user_id]["rps_streak"] = 0.5
         if message.from_user.username == "awertkx":
-            await message.answer("Ебать, Альнур решил отпустить своих заключенных, видимо сбор намечается.")
+            data["children"] = 0
+            await message.answer("Ебать, Альнур решил отпустить всех своих заключенных, видимо сбор намечается.")
         else:
             if message.from_user.username:
                 await message.answer(f"Ахуеть, вы спасли {print_children} детей! Похлопаем @{message.from_user.username}!")
             else:
                 await message.answer(f"Ахуеть, вы спасли {print_children} детей! Алим бля тег себе сделай заебал уже.")
+        save_database(data)
     else:
         unluck_number = random.randint(10, 100)
         data["children"] = data["children"] + unluck_number
         save_database(data)
         await message.answer(f"Вы проиграли! Альнур узнал о ваших намерениях и словил еще {unluck_number} детей!")
+    save_users(users)
 
-@dp.message(Command('/duel_with_alnur'))
-async def alnur_duel_handler(message: Message) -> None:
-    try:
-
-        await message.answer("ПАШОЛ НАУХЙ")
-    except:
-        print('Help exception')
         
 @dp.message()
 async def echo_handler(message: Message) -> None: 
