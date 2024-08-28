@@ -172,6 +172,7 @@ async def dice_handler(message: Message) -> None:
         else:
             print_children = int(data["children"] * (users.get(user_id, {}).get("rps_streak", 1) / 10))
         data["children"] -= print_children
+        data["temp_children"] = 0
         save_score = users[user_id].get("save_score", 0) + print_children
         users[user_id]["save_score"] = save_score
         users[user_id]["rps_streak"] = 0.5
