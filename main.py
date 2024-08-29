@@ -30,7 +30,7 @@ async def command_start_handler(message: Message) -> None:
 
 @dp.message(Command('basement'))
 async def basement_handler(message: Message) -> None:
-    data = load_databese()
+    data = load_database()
     await message.answer(f"Детей в подвале: {data.get('children', -1)}")
 
 
@@ -40,7 +40,7 @@ async def alnur_message_handler(message: Message):
         await message.answer(f"СУка кто пишет в лс тот педик ебаный")
         return
     children_addition = random.randint(1, 10)
-    data = load_databese()
+    data = load_database()
 
     temp_children = data.get('temp_children', -1) + children_addition
     data["temp_children"] = temp_children
@@ -58,7 +58,7 @@ async def trah_message_handler(message: Message):
     if check_private_chat(message):
         await message.answer(f"СУка кто пишет в лс тот педик ебаный")
         return
-    data = load_databese()
+    data = load_database()
     data['trah'] = True
     save_database(data)
 
@@ -67,7 +67,7 @@ async def trah_end_message_handler(message: Message):
     if check_private_chat(message):
         await message.answer(f"СУка кто пишет в лс тот педик ебаный")
         return
-    data = load_databese()
+    data = load_database()
 
     data['trah'] = False
     save_database(data)
@@ -89,7 +89,7 @@ async def save_children_handler(message: Message) -> None:
     if check_private_chat(message):
         await message.answer(f"СУка кто пишет в лс тот педик ебаный")
         return
-    data = load_databese()
+    data = load_database()
     if data.get("children", -1) == 0:
         await message.answer("Подвал пуст (пока)")
         return
@@ -101,7 +101,7 @@ async def save_children_handler(message: Message) -> None:
     await message.answer(f"Чтобы спасти детей выбейте {save_number} на кубике!")
 
 @dp.message(Command('my_save_score'))
-async def help_handler(message: Message) -> None:
+async def my_save_score(message: Message) -> None:
     try:
         users = load_users()
         response = await message.answer(f"Ты спас {users.get(message.from_user.id, {}).get('save_score', -1)} детей")
@@ -112,7 +112,7 @@ async def help_handler(message: Message) -> None:
         print('my_save_score exception')
         
 @dp.message(Command('save_leaderboard'))
-async def help_handler(message: Message) -> None:
+async def save_leaderboard(message: Message) -> None:
     users = load_users()
     sorted_users = sorted(users.items(), key=lambda x: x[1]['save_score'], reverse=True)
     response_text = "🏅 Топ спасителей:\n\n"
@@ -127,7 +127,7 @@ async def help_handler(message: Message) -> None:
     await bot.delete_message(chat_id=response.chat.id, message_id=response.message_id)
 
 @dp.message(Command('my_rps_streak'))
-async def help_handler(message: Message) -> None:
+async def my_rps_streak(message: Message) -> None:
     users = load_users()
     response = await message.answer(f"Твой стрик в КНБ: {users[message.from_user.id].get('rps_streak', 0.5)-0.5}")
     await asyncio.sleep(60)
@@ -139,7 +139,7 @@ async def dice_handler(message: Message) -> None:
         await message.answer(f"СУка кто пишет в лс тот педик ебаный")
         return
     current_time = datetime.datetime.now(datetime.timezone.utc)
-    data = load_databese()
+    data = load_database()
     if data.get("children", -1) == 0:
         await message.answer("Подвал пуст (пока)")
         return
@@ -195,7 +195,7 @@ async def dice_handler(message: Message) -> None:
         
 @dp.message()
 async def echo_handler(message: Message) -> None: 
-    data = load_databese()
+    data = load_database()
     if data.get('trah', False):
         response = await message.answer("#МыХотимТрахнутьАльнура!")
         await asyncio.sleep(60)
