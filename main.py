@@ -104,6 +104,8 @@ async def save_children_handler(message: Message) -> None:
 async def my_save_score(message: Message) -> None:
     try:
         users = load_users()
+        if message.from_user.id not in users:
+            users = create_user(message.from_user.id, message.from_user.username)
         response = await message.answer(f"Ты спас {users.get(message.from_user.id, {}).get('save_score', -1)} детей")
         await asyncio.sleep(60)
     
@@ -129,6 +131,8 @@ async def save_leaderboard(message: Message) -> None:
 @dp.message(Command('my_rps_streak'))
 async def my_rps_streak(message: Message) -> None:
     users = load_users()
+    if message.from_user.id not in users:
+            users = create_user(message.from_user.id, message.from_user.username)
     response = await message.answer(f"Твой стрик в КНБ: {users[message.from_user.id].get('rps_streak', 0.5)-0.5}")
     await asyncio.sleep(60)
 
