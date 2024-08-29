@@ -164,7 +164,7 @@ async def join_rps_handler(message: Message) -> None:
     session['player2_username'] = message.from_user.username
     msg = await message.answer(f"@{session['player2_username']} вошел в игру! Оба игрока должны сделать свой выбор.")
     asyncio.create_task(delete_message_later(msg))
-    asyncio.create_task(delete_message_later(session['start_msg']))
+    asyncio.create_task(delete_message_later(session['start_msg'], 5))
 
     choice_buttons = choice_buttons = InlineKeyboardMarkup(inline_keyboard=[
         [
