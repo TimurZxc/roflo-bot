@@ -5,13 +5,16 @@ import datetime
 from aiogram import Bot, Dispatcher, html, F
 from aiogram.types.web_app_info import WebAppInfo
 from aiogram.filters import CommandStart, Command
-from aiogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup, MenuButton
+from aiogram.types import Message, InlineKeyboardButton, InlineKeyboardMarkup, MenuButton, ChatPermissions
 from config import TOKEN
 from aiogram.exceptions import TelegramBadRequest
 import random
+import time
 from utils import *
 from rps import register_handlers_rps
 from bot import bot
+from collections import defaultdict
+
 
 # TOKEN = getenv("BOT_TOKEN")
 
@@ -22,6 +25,10 @@ register_handlers_rps(dp)
 
 @dp.message(CommandStart())
 async def command_start_handler(message: Message) -> None:
+    if await is_user_spamming(message.from_user.id):
+        await mute_user(message.chat.id, message.from_user.id)
+        await message.answer(f"@{message.from_user.username} получил кляп за спам блять")
+        return
     try:
         await message.answer(f"Глаз Альнура")
     except TelegramBadRequest:
@@ -30,8 +37,14 @@ async def command_start_handler(message: Message) -> None:
 
 @dp.message(Command('basement'))
 async def basement_handler(message: Message) -> None:
+    if await is_user_spamming(message.from_user.id):
+        await mute_user(message.chat.id, message.from_user.id)
+        await message.answer(f"@{message.from_user.username} получил кляп за спам блять")
+        return
     data = load_database()
-    await message.answer(f"Детей в подвале: {data.get('children', -1)}")
+    msg = await message.answer(f"Детей в подвале: {data.get('children', -1)}")
+    asyncio.create_task(delete_message_later(msg))
+
 
 
 @dp.message(F.from_user.username == "awertkx")
@@ -50,7 +63,8 @@ async def alnur_message_handler(message: Message):
     if data.get("alnur_mesage_count", 0) % 10 == 0:
         data["temp_children"] = 0
         save_database(data)
-        await message.answer(f"Количество детей в подвале пополнено на {temp_children}")  
+        msg = await message.answer(f"Количество детей в подвале пополнено на {temp_children}")
+        asyncio.create_task(delete_message_later(msg))
 
 
 @dp.message(F.text == '#МыХотимТрахнутьАльнура!')
@@ -73,48 +87,58 @@ async def trah_end_message_handler(message: Message):
     save_database(data)
     
 
-@dp.message(Command('help'))
-async def help_handler(message: Message) -> None:
-    try:
-        await message.answer("ПАШОЛ НАУХЙ")
-    except:
-        print('Help exception')
-
 @dp.message(Command('get_me'))
 async def get_me_handler(message: Message) -> None:
+    if await is_user_spamming(message.from_user.id):
+        await mute_user(message.chat.id, message.from_user.id)
+        await message.answer(f"@{message.from_user.username} получил кляп за спам блять")
+        return
     await message.answer(str(message.from_user))
 
 @dp.message(Command('save_children'))
 async def save_children_handler(message: Message) -> None:
+    if await is_user_spamming(message.from_user.id):
+        await mute_user(message.chat.id, message.from_user.id)
+        await message.answer(f"@{message.from_user.username} получил кляп за спам блять")
+        return
     if check_private_chat(message):
-        await message.answer(f"СУка кто пишет в лс тот педик ебаный")
+        msg = await message.answer(f"СУка кто пишет в лс тот педик ебаный")
         return
     data = load_database()
     if data.get("children", -1) == 0:
-        await message.answer("Подвал пуст (пока)")
+        msg = await message.answer("Подвал пуст (пока)")
+        asyncio.create_task(delete_message_later(msg))
         return
     
     save_number = random.randint(1, 6)
     data['save_number'] = save_number
     save_database(data)
     
-    await message.answer(f"Чтобы спасти детей выбейте {save_number} на кубике!")
+    msg = await message.answer(f"Чтобы спасти детей выбейте {save_number} на кубике!")
+    asyncio.create_task(delete_message_later(msg))
 
 @dp.message(Command('my_save_score'))
 async def my_save_score(message: Message) -> None:
+    if await is_user_spamming(message.from_user.id):
+        await mute_user(message.chat.id, message.from_user.id)
+        await message.answer(f"@{message.from_user.username} получил кляп за спам блять")
+        return
     try:
         users = load_users()
         if message.from_user.id not in users:
             users = create_user(message.from_user.id, message.from_user.username)
         response = await message.answer(f"Ты спас {users.get(message.from_user.id, {}).get('save_score', -1)} детей")
         await asyncio.sleep(60)
-    
         await bot.delete_message(chat_id=response.chat.id, message_id=response.message_id)
     except:
         print('my_save_score exception')
         
 @dp.message(Command('save_leaderboard'))
 async def save_leaderboard(message: Message) -> None:
+    if await is_user_spamming(message.from_user.id):
+        await mute_user(message.chat.id, message.from_user.id)
+        await message.answer(f"@{message.from_user.username} получил кляп за спам блять")
+        return
     users = load_users()
     sorted_users = sorted(users.items(), key=lambda x: x[1]['save_score'], reverse=True)
     response_text = "🏅 Топ спасителей:\n\n"
@@ -125,18 +149,21 @@ async def save_leaderboard(message: Message) -> None:
     
     response = await message.answer(response_text)
     await asyncio.sleep(60)
-
     await bot.delete_message(chat_id=response.chat.id, message_id=response.message_id)
 
 @dp.message(Command('my_rps_streak'))
 async def my_rps_streak(message: Message) -> None:
+    if await is_user_spamming(message.from_user.id):
+        await mute_user(message.chat.id, message.from_user.id)
+        await message.answer(f"@{message.from_user.username} получил кляп за спам блять")
+        return
     users = load_users()
     if message.from_user.id not in users:
-            users = create_user(message.from_user.id, message.from_user.username)
+        users = create_user(message.from_user.id, message.from_user.username)
     response = await message.answer(f"Твой стрик в КНБ: {users[message.from_user.id].get('rps_streak', 0.5)-0.5}")
     await asyncio.sleep(60)
-
     await bot.delete_message(chat_id=response.chat.id, message_id=response.message_id)
+
 @dp.message(F.dice)
 async def dice_handler(message: Message) -> None:
     if check_private_chat(message):
@@ -145,7 +172,8 @@ async def dice_handler(message: Message) -> None:
     current_time = datetime.datetime.now(datetime.timezone.utc)
     data = load_database()
     if data.get("children", -1) == 0:
-        await message.answer("Подвал пуст (пока)")
+        msg = await message.answer("Подвал пуст (пока)")
+        asyncio.create_task(delete_message_later(msg))
         return
     users = load_users()
     if message.from_user.id not in users:
@@ -160,12 +188,14 @@ async def dice_handler(message: Message) -> None:
             if user_data.get("free_spins", 0) > 0:
                 users[user_id]["free_spins"] -= 1
                 current_time = user_data.get("cooldown_time")
-                await message.answer(f"@{message.from_user.username} потратил 1 фриспин! Осталось {user_data['free_spins']} фриспинов!")
+                msg = await message.answer(f"@{message.from_user.username} потратил 1 фриспин! Осталось {user_data['free_spins']} фриспинов!")
+                asyncio.create_task(delete_message_later(msg))
             else:
                 remaining_time = cooldown_end_time - current_time
                 remaining_minutes = remaining_time.total_seconds() // 60
                 remaining_seconds = remaining_time.total_seconds() % 60
-                await message.answer(f"Подожди {int(remaining_minutes)} минут и {int(remaining_seconds)} секунд!")
+                msg = await message.answer(f"Подожди {int(remaining_minutes)} минут и {int(remaining_seconds)} секунд!")
+                asyncio.create_task(delete_message_later(msg))
                 return
     users[user_id]["cooldown_time"] = current_time
     
@@ -185,15 +215,18 @@ async def dice_handler(message: Message) -> None:
             await message.answer("Ебать, Альнур решил отпустить всех своих заключенных, видимо сбор намечается.")
         else:
             if message.from_user.username:
-                await message.answer(f"Ахуеть, вы спасли {print_children} детей! Похлопаем @{message.from_user.username}!")
+                msg = await message.answer(f"Ахуеть, вы спасли {print_children} детей! Похлопаем @{message.from_user.username}!")
+                asyncio.create_task(delete_message_later(msg))
             else:
-                await message.answer(f"Ахуеть, вы спасли {print_children} детей! Алим бля тег себе сделай заебал уже.")
+                msg = await message.answer(f"Ахуеть, вы спасли {print_children} детей! Алим бля тег себе сделай заебал уже.")
+                asyncio.create_task(delete_message_later(msg))
         save_database(data)
     else:
         unluck_number = random.randint(10, 100)
         data["children"] = data["children"] + unluck_number
         save_database(data)
-        await message.answer(f"Вы проиграли! Альнур узнал о ваших намерениях и словил еще {unluck_number} детей!")
+        msg = await message.answer(f"Вы проиграли! Альнур узнал о ваших намерениях и словил еще {unluck_number} детей!")
+        asyncio.create_task(delete_message_later(msg))
     save_users(users)
 
         
@@ -205,6 +238,7 @@ async def echo_handler(message: Message) -> None:
         await asyncio.sleep(60)
     
         await bot.delete_message(chat_id=response.chat.id, message_id=response.message_id)
+
 
 async def main() -> None:
     await dp.start_polling(bot)

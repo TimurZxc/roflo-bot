@@ -1,18 +1,51 @@
 import datetime
 import json
 import asyncio
-from aiogram.types import Message
+import time
+from aiogram.types import Message, ChatPermissions
+from aiogram.exceptions import TelegramBadRequest
+from collections import defaultdict
 from bot import bot
+
+MUTE_DURATION = 5 * 60  # 5 minutes
+COMMAND_LIMIT = 5  # Number of commands allowed in the time frame
+TIME_FRAME = 20
 
 COOLDOWN_FILE = "user_cooldowns.json"
 DATABASE_FILE = "database.json"
 COOLDOWN_PERIOD = datetime.timedelta(hours=1)
+command_usage = defaultdict(lambda: {'last_command_time': 0, 'count': 0})
+
 
 async def delete_message_later(message: Message, delay: int = 60):
     await asyncio.sleep(delay)
     await message.delete()
 
+async def mute_user(chat_id: int, user_id: int):
+    until_date = time.time() + MUTE_DURATION
+    try:
+        await bot.restrict_chat_member(
+            chat_id=chat_id,
+            user_id=user_id,
+            permissions=ChatPermissions(can_send_messages=False),
+            until_date=until_date
+        )
+    except TelegramBadRequest:
+        print('Mute exception')
+
+async def is_user_spamming(user_id: int) -> bool:
+    current_time = time.time()
+    user_data = command_usage[user_id]
+
+    if current_time - user_data['last_command_time'] > TIME_FRAME:
+        user_data['count'] = 0
     
+    user_data['last_command_time'] = current_time
+    user_data['count'] += 1
+    if user_data['count'] > COMMAND_LIMIT:
+        return True
+
+    return False  
 def create_user(user_id, user_name):
     users = load_users()
     users[user_id] = {

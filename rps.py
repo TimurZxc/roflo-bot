@@ -5,7 +5,7 @@ from aiogram.types import Message, InlineKeyboardMarkup, InlineKeyboardButton, C
 import datetime
 import asyncio
 import random
-from utils import load_users, check_private_chat, save_users, create_user, delete_message_later, load_database, save_database
+from utils import *
 from bot import bot
 
 # Game session storage
@@ -52,11 +52,16 @@ def determine_winner(choice1, choice2):
         return 'player2'
 
 async def start_rps_handler(message: Message) -> None:
+    if await is_user_spamming(message.from_user.id):
+        await mute_user(message.chat.id, message.from_user.id)
+        await message.answer(f"@{message.from_user.username} получил кляп за спам блять")
+        return
     if check_private_chat(message):
         await message.answer(f"СУка кто пишет в лс тот педик ебаный")
         return
     if message.chat.id in game_sessions:
-        await message.answer("Игра уже в процессе!")
+        msg = await message.answer("Игра уже в процессе!")
+        asyncio.create_task(delete_message_later(msg))
         return
     member = await bot.get_chat_member(message.chat.id, message.from_user.id)
 
@@ -85,6 +90,10 @@ async def start_rps_handler(message: Message) -> None:
 
 
 async def rps_status_handler(message: Message) -> None:
+    if await is_user_spamming(message.from_user.id):
+        await mute_user(message.chat.id, message.from_user.id)
+        await message.answer(f"@{message.from_user.username} получил кляп за спам блять")
+        return
     session = game_sessions.get(message.chat.id)
     if check_private_chat(message):
         await message.answer("СУка кто пишет в лс тот педик ебаный")
@@ -114,6 +123,10 @@ async def rps_status_handler(message: Message) -> None:
                 asyncio.create_task(delete_message_later(msg))
 
 async def join_rps_handler(message: Message) -> None:
+    if await is_user_spamming(message.from_user.id):
+        await mute_user(message.chat.id, message.from_user.id)
+        await message.answer(f"@{message.from_user.username} получил кляп за спам блять")
+        return
     if check_private_chat(message):
         await message.answer("СУка кто пишет в лс тот педик ебаный")
         return
@@ -247,6 +260,10 @@ async def callback_rps_choice_handler(callback_query: CallbackQuery) -> None:
         del game_sessions[callback_query.message.chat.id] 
     await callback_query.answer()  
 async def cancel_rps_handler(message: Message) -> None:
+    if await is_user_spamming(message.from_user.id):
+        await mute_user(message.chat.id, message.from_user.id)
+        await message.answer(f"@{message.from_user.username} получил кляп за спам блять")
+        return
     if check_private_chat(message):
         await message.answer(f"СУка кто пишет в лс тот педик ебаный")
         return
