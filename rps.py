@@ -270,6 +270,7 @@ async def cancel_rps_handler(message: Message) -> None:
         return
     if message.chat.id in game_sessions:
         if game_sessions[message.chat.id]['player1'] == message.from_user.id or game_sessions[message.chat.id]['player2'] == message.from_user.id:
+            asyncio.create_task(delete_message_later(game_sessions[message.chat.id]['start_msg'], 5))
             del game_sessions[message.chat.id]
             msg = await message.answer("Игра отменена")
             asyncio.create_task(delete_message_later(msg))
