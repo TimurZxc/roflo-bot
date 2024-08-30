@@ -85,8 +85,8 @@ async def start_rps_handler(message: Message) -> None:
                                       'player1_username': message.from_user.username,
                                       'player2_username': None}
     
-    msg = await message.answer(f"@{message.from_user.username} начал КНБ! Чтобы принять вызов - /rps_join.")
-    asyncio.create_task(delete_message_later(msg))
+    start_msg = await message.answer(f"@{message.from_user.username} начал КНБ! Чтобы принять вызов - /rps_join.")
+    game_sessions[message.chat.id]['start_msg'] = start_msg
 
 
 async def rps_status_handler(message: Message) -> None:
@@ -164,6 +164,7 @@ async def join_rps_handler(message: Message) -> None:
     session['player2_username'] = message.from_user.username
     msg = await message.answer(f"@{session['player2_username']} вошел в игру! Оба игрока должны сделать свой выбор.")
     asyncio.create_task(delete_message_later(msg))
+    asyncio.create_task(delete_message_later(session['start_msg'], 5))
 
     choice_buttons = choice_buttons = InlineKeyboardMarkup(inline_keyboard=[
         [
