@@ -253,7 +253,7 @@ async def callback_rps_choice_handler(callback_query: CallbackQuery) -> None:
             unluck_number = random.randint(10, 100)
             data["children"] = data["children"] + unluck_number
             save_database(data)
-            msg = await callback_query.message.answer(f"Ничья! Оба получают -2 фриспина, а Aльнур выходит на охоту и ловит {unluck_number}")
+            msg = await callback_query.message.answer(f"Ничья! Оба получают -2 фриспина, а Aльнур выходит на охоту и ловит {unluck_number} детей")
             game_ender(session['player1'], session["player1_username"], session['player2'], session["player2_username"], True)
             asyncio.create_task(delete_message_later(msg))
         if session['buttons_message']:
