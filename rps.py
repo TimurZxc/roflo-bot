@@ -69,9 +69,9 @@ async def start_rps_handler(message: Message) -> None:
         await bot.promote_chat_member(
             chat_id=message.chat.id,
             user_id=message.from_user.id,
-            can_change_info=True,
-            can_delete_messages=False,
-            can_invite_users=True,
+            can_change_info=False,
+            can_delete_messages=True,
+            can_invite_users=False,
             can_restrict_members=False,
             can_pin_messages=False,
             can_promote_members=False,
@@ -151,11 +151,11 @@ async def join_rps_handler(message: Message) -> None:
         await bot.promote_chat_member(
             chat_id=message.chat.id,
             user_id=message.from_user.id,
-            can_change_info=True,
-            can_delete_messages=False,
-            can_invite_users=True,
+            can_change_info=False,
+            can_delete_messages=True,
+            can_invite_users=False,
             can_restrict_members=False,
-            can_pin_messages=True,
+            can_pin_messages=False,
             can_promote_members=False,
             can_manage_video_chats=False,
             is_anonymous=False 
