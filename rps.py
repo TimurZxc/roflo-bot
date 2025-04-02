@@ -70,7 +70,7 @@ async def start_rps_handler(message: Message) -> None:
             chat_id=message.chat.id,
             user_id=message.from_user.id,
             can_change_info=False,
-            can_delete_messages=True,
+            can_delete_messages=False,
             can_invite_users=False,
             can_restrict_members=False,
             can_pin_messages=False,
