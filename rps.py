@@ -176,6 +176,28 @@ async def join_rps_handler(message: Message) -> None:
 
     buttons_msg = await message.answer(f"@{session['player1_username']} и @{session['player2_username']}, нажмите кнопки бля", reply_markup=choice_buttons)
     session['buttons_message'] = buttons_msg
+    asyncio.create_task(rps_timeout(message.chat.id))
+
+
+async def rps_timeout(chat_id: int):
+    """Cancels the game if one or both players have not made a choice within 10 minutes."""
+    await asyncio.sleep(300)  # wait for 600 seconds (10 minutes)
+    session = game_sessions.get(chat_id)
+    if session:
+        missing = []
+        if session.get('player1_choice') is None:
+            missing.append(f"@{session['player1_username']}")
+        if session.get('player2_choice') is None:
+            missing.append(f"@{session['player2_username']}")
+        if missing:  # if at least one player hasn't chosen
+            msg = await bot.send_message(
+                chat_id,
+                f"Ладно похуй, {', '.join(missing)} нихуя не выбрал(и). Игра отменена!"
+            )
+            asyncio.create_task(delete_message_later(msg))
+            if session['buttons_message']:
+                asyncio.create_task(delete_message_later(session['buttons_message'], 5))
+            del game_sessions[chat_id]
 
 async def callback_rps_choice_handler(callback_query: CallbackQuery) -> None:
     session = game_sessions.get(callback_query.message.chat.id)
