@@ -14,6 +14,7 @@ from utils import *
 from rps import register_handlers_rps
 from bot import bot
 from collections import defaultdict
+from zoneinfo import ZoneInfo
 
 
 # TOKEN = getenv("BOT_TOKEN")
@@ -65,6 +66,20 @@ async def alnur_message_handler(message: Message):
         save_database(data)
         msg = await message.answer(f"Количество детей в подвале пополнено на {temp_children}")
         asyncio.create_task(delete_message_later(msg))
+
+@dp.message(F.from_user.username == "hyperdadada")
+async def amina_message_handler(message: Message):
+    if check_private_chat(message):
+        await message.answer(f"СУка кто пишет в лс тот педик ебаный")
+        return
+    start_time = time(21, 0)  # 21:00 or 9 PM
+    end_time = time(8, 0)
+    current_time = datetime.datetime.now(ZoneInfo("Asia/Karachi")).time()
+    if current_time >= start_time or current_time < end_time:
+        await message.delete()
+        await message.answer(f"К сожалению Амина уже спит, но она бы написала: {message.text}")
+        
+
 
 
 @dp.message(F.text == '#МыХотимТрахнутьАльнура!')
@@ -208,7 +223,7 @@ async def dice_handler(message: Message) -> None:
         data["children"] -= print_children
         data["temp_children"] = 0
         save_score = users[user_id].get("save_score", 0) + print_children
-        users[user_id]["save_score"] = save_score
+        users[user_id]["save_score"] = save_score   
         users[user_id]["rps_streak"] = 0.5
         if message.from_user.username == "awertkx":
             data["children"] = 0
