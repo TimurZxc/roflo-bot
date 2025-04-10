@@ -52,16 +52,17 @@ def determine_winner(choice1, choice2):
         return 'player2'
 
 async def start_rps_handler(message: Message) -> None:
-    if await is_user_spamming(message.from_user.id):
-        await mute_user(message.chat.id, message.from_user.id)
-        await message.answer(f"@{message.from_user.username} получил кляп за спам блять")
-        return
+    # if await is_user_spamming(message.from_user.id):
+    #     await mute_user(message.chat.id, message.from_user.id)
+    #     await message.answer(f"@{message.from_user.username} получил кляп за спам блять")
+    #     return
     if check_private_chat(message):
         await message.answer(f"СУка кто пишет в лс тот педик ебаный")
         return
     if message.chat.id in game_sessions:
         msg = await message.answer("Игра уже в процессе!")
         asyncio.create_task(delete_message_later(msg))
+        asyncio.create_task(delete_message_later(message, 5))
         return
     member = await bot.get_chat_member(message.chat.id, message.from_user.id)
 
@@ -87,6 +88,7 @@ async def start_rps_handler(message: Message) -> None:
     
     start_msg = await message.answer(f"@{message.from_user.username} начал КНБ! Чтобы принять вызов - /rps_join.")
     game_sessions[message.chat.id]['start_msg'] = start_msg
+    asyncio.create_task(delete_message_later(message, 5))
 
 
 async def rps_status_handler(message: Message) -> None:
@@ -102,31 +104,38 @@ async def rps_status_handler(message: Message) -> None:
     if message.chat.id not in game_sessions:
         msg = await message.answer("Нет активных игр! Начните игру с /rps_start")
         asyncio.create_task(delete_message_later(msg))
+        asyncio.create_task(delete_message_later(message, 5))
     else:
         if not session['player2']:
             msg =await message.answer(f"@{session['player1_username']} в ожидании соперника! Чтобы принять вызов - /rps_join.")
             asyncio.create_task(delete_message_later(msg))
+            asyncio.create_task(delete_message_later(message, 5))
         elif session['player2']:
             msg = await message.answer(f"@{session['player1_username']} и @{session['player2_username']} в игрe!")
             asyncio.create_task(delete_message_later(msg))
+            asyncio.create_task(delete_message_later(message, 5))
             if session['player1_choice']:
                 msg = await message.answer(f"@{session['player1_username']} выбрал!")
                 asyncio.create_task(delete_message_later(msg))
+                asyncio.create_task(delete_message_later(message, 5))
             else:
                 msg = await message.answer(f"@{session['player1_username']} еще нихуя не выбрал!")
                 asyncio.create_task(delete_message_later(msg))
+                asyncio.create_task(delete_message_later(message, 5))
             if session['player2_choice']:
                 msg = await message.answer(f"@{session['player2_username']} выбрал!")
                 asyncio.create_task(delete_message_later(msg))
+                asyncio.create_task(delete_message_later(message, 5))
             else:
                 msg = await message.answer(f"@{session['player2_username']} еще нихуя не выбрал!")
                 asyncio.create_task(delete_message_later(msg))
+                asyncio.create_task(delete_message_later(message, 5))
 
 async def join_rps_handler(message: Message) -> None:
-    if await is_user_spamming(message.from_user.id):
-        await mute_user(message.chat.id, message.from_user.id)
-        await message.answer(f"@{message.from_user.username} получил кляп за спам блять")
-        return
+    # if await is_user_spamming(message.from_user.id):
+    #     await mute_user(message.chat.id, message.from_user.id)
+    #     await message.answer(f"@{message.from_user.username} получил кляп за спам блять")
+    #     return
     if check_private_chat(message):
         await message.answer("СУка кто пишет в лс тот педик ебаный")
         return
@@ -136,15 +145,18 @@ async def join_rps_handler(message: Message) -> None:
     if not session:
         msg = await message.answer("Нету активных игр! Начните игру с /rps_start")
         asyncio.create_task(delete_message_later(msg))
+        asyncio.create_task(delete_message_later(message, 5))
         return
 
     if session['player2']:
         msg = await message.answer("В этой игре уже 2 игрока!")
         asyncio.create_task(delete_message_later(msg))
+        asyncio.create_task(delete_message_later(message, 5))
         return
     if message.from_user.id == session['player1']:
         msg = await message.answer(f"@{message.from_user.username} уже в игре сука!")
         asyncio.create_task(delete_message_later(msg))
+        asyncio.create_task(delete_message_later(message, 5))
         return
     member = await bot.get_chat_member(message.chat.id, message.from_user.id)
     if member.status != 'administrator' and member.status != 'creator':    
@@ -165,6 +177,7 @@ async def join_rps_handler(message: Message) -> None:
     msg = await message.answer(f"@{session['player2_username']} вошел в игру! Оба игрока должны сделать свой выбор.")
     asyncio.create_task(delete_message_later(msg))
     asyncio.create_task(delete_message_later(session['start_msg'], 5))
+    asyncio.create_task(delete_message_later(message, 5))
 
     choice_buttons = choice_buttons = InlineKeyboardMarkup(inline_keyboard=[
         [
@@ -282,6 +295,8 @@ async def callback_rps_choice_handler(callback_query: CallbackQuery) -> None:
             asyncio.create_task(delete_message_later(session['buttons_message'], 5))
         del game_sessions[callback_query.message.chat.id] 
     await callback_query.answer()  
+
+
 async def cancel_rps_handler(message: Message) -> None:
     if await is_user_spamming(message.from_user.id):
         await mute_user(message.chat.id, message.from_user.id)
@@ -296,12 +311,15 @@ async def cancel_rps_handler(message: Message) -> None:
             del game_sessions[message.chat.id]
             msg = await message.answer("Игра отменена")
             asyncio.create_task(delete_message_later(msg))
+            asyncio.create_task(delete_message_later(message, 5))
         else:
             msg = await message.answer("Вы не игрок этой игры!")
             asyncio.create_task(delete_message_later(msg))
+            asyncio.create_task(delete_message_later(message, 5))
     else:
         msg = await message.answer("Нет игры для отмены")
         asyncio.create_task(delete_message_later(msg))
+        asyncio.create_task(delete_message_later(message, 5))
 
 # Function to register all handlers
 def register_handlers_rps(dp: Dispatcher):

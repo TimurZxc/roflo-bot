@@ -32,6 +32,7 @@ async def command_start_handler(message: Message) -> None:
         return
     try:
         await message.answer(f"Глаз Альнура")
+        asyncio.create_task(delete_message_later(message, 5))
     except TelegramBadRequest:
         print('Trigger form group')
 
@@ -45,41 +46,7 @@ async def basement_handler(message: Message) -> None:
     data = load_database()
     msg = await message.answer(f"Детей в подвале: {data.get('children', -1)}")
     asyncio.create_task(delete_message_later(msg))
-
-
-
-@dp.message(F.from_user.username == "awertkx")
-async def alnur_message_handler(message: Message):
-    if check_private_chat(message):
-        await message.answer(f"СУка кто пишет в лс тот педик ебаный")
-        return
-    children_addition = random.randint(1, 10)
-    data = load_database()
-
-    temp_children = data.get('temp_children', -1) + children_addition
-    data["temp_children"] = temp_children
-    data["children"] += children_addition
-    data["alnur_mesage_count"] = data.get("alnur_mesage_count", 0) + 1
-    save_database(data)
-    if data.get("alnur_mesage_count", 0) % 10 == 0:
-        data["temp_children"] = 0
-        save_database(data)
-        msg = await message.answer(f"Количество детей в подвале пополнено на {temp_children}")
-        asyncio.create_task(delete_message_later(msg))
-
-@dp.message(F.from_user.username == "hyperdadada")
-async def amina_message_handler(message: Message):
-    if check_private_chat(message):
-        await message.answer(f"СУка кто пишет в лс тот педик ебаный")
-        return
-    start_time = time(21, 0)  # 21:00 or 9 PM
-    end_time = time(8, 0)
-    current_time = datetime.datetime.now(ZoneInfo("Asia/Karachi")).time()
-    if current_time >= start_time or current_time < end_time:
-        await message.delete()
-        await message.answer(f"К сожалению Амина уже спит, но она бы написала: {message.text}")
-        
-
+    asyncio.create_task(delete_message_later(message, 5))
 
 
 @dp.message(F.text == '#МыХотимТрахнутьАльнура!')
@@ -108,7 +75,11 @@ async def get_me_handler(message: Message) -> None:
         await mute_user(message.chat.id, message.from_user.id)
         await message.answer(f"@{message.from_user.username} получил кляп за спам блять")
         return
-    await message.answer(str(message.from_user))
+    msg = await message.answer(str(message.from_user))
+    asyncio.create_task(delete_message_later(message, 5))
+    asyncio.create_task(delete_message_later(msg))
+
+
 
 @dp.message(Command('save_children'))
 async def save_children_handler(message: Message) -> None:
@@ -131,6 +102,8 @@ async def save_children_handler(message: Message) -> None:
     
     msg = await message.answer(f"Чтобы спасти детей выбейте {save_number} на кубике!")
     asyncio.create_task(delete_message_later(msg))
+    asyncio.create_task(delete_message_later(message, 5))
+
 
 @dp.message(Command('my_save_score'))
 async def my_save_score(message: Message) -> None:
@@ -143,6 +116,7 @@ async def my_save_score(message: Message) -> None:
         if message.from_user.id not in users:
             users = create_user(message.from_user.id, message.from_user.username)
         response = await message.answer(f"Ты спас {users.get(message.from_user.id, {}).get('save_score', -1)} детей")
+        asyncio.create_task(delete_message_later(message, 5))
         await asyncio.sleep(60)
         await bot.delete_message(chat_id=response.chat.id, message_id=response.message_id)
     except:
@@ -163,6 +137,7 @@ async def save_leaderboard(message: Message) -> None:
         response_text += f"{emoji} @{data.get('user_name', 'Unknown')}: {data.get('save_score', -1)} детей\n"
     
     response = await message.answer(response_text)
+    asyncio.create_task(delete_message_later(message, 5))
     await asyncio.sleep(60)
     await bot.delete_message(chat_id=response.chat.id, message_id=response.message_id)
 
@@ -176,6 +151,7 @@ async def my_rps_streak(message: Message) -> None:
     if message.from_user.id not in users:
         users = create_user(message.from_user.id, message.from_user.username)
     response = await message.answer(f"Твой стрик в КНБ: {users[message.from_user.id].get('rps_streak', 0.5)-0.5}")
+    asyncio.create_task(delete_message_later(message, 5))
     await asyncio.sleep(60)
     await bot.delete_message(chat_id=response.chat.id, message_id=response.message_id)
 
@@ -232,9 +208,11 @@ async def dice_handler(message: Message) -> None:
             if message.from_user.username:
                 msg = await message.answer(f"Ахуеть, вы спасли {print_children} детей! Похлопаем @{message.from_user.username}!")
                 asyncio.create_task(delete_message_later(msg))
+                asyncio.create_task(delete_message_later(message, 5))
             else:
                 msg = await message.answer(f"Ахуеть, вы спасли {print_children} детей! Алим бля тег себе сделай заебал уже.")
                 asyncio.create_task(delete_message_later(msg))
+                asyncio.create_task(delete_message_later(message, 5))
         save_database(data)
     else:
         unluck_number = random.randint(10, 100)
@@ -242,8 +220,41 @@ async def dice_handler(message: Message) -> None:
         save_database(data)
         msg = await message.answer(f"Вы проиграли! Альнур узнал о ваших намерениях и словил еще {unluck_number} детей!")
         asyncio.create_task(delete_message_later(msg))
+        asyncio.create_task(delete_message_later(message, 5))
     save_users(users)
 
+@dp.message(F.from_user.username == "moonyneko")
+async def amina_message_handler(message: Message):
+    if check_private_chat(message):
+        await message.answer(f"СУка кто пишет в лс тот педик ебаный")
+        return
+    start_time = datetime.time(21, 0)  # 21:00 or 9 PM
+    end_time = datetime.time(8, 0)
+    current_time = datetime.datetime.now(ZoneInfo("Asia/Karachi")).time()
+    if current_time >= start_time or current_time < end_time:
+        await message.delete()
+        await message.answer(f"К сожалению Амина уже спит, но она бы написала:\n{message.text}")
+
+@dp.message(F.from_user.username == "awertkx")
+async def alnur_message_handler(message: Message):
+    if check_private_chat(message):
+        await message.answer(f"СУка кто пишет в лс тот педик ебаный")
+        return
+    children_addition = random.randint(1, 10)
+    data = load_database()
+
+    temp_children = data.get('temp_children', -1) + children_addition
+    data["temp_children"] = temp_children
+    data["children"] += children_addition
+    data["alnur_mesage_count"] = data.get("alnur_mesage_count", 0) + 1
+    save_database(data)
+    if data.get("alnur_mesage_count", 0) % 10 == 0:
+        data["temp_children"] = 0
+        save_database(data)
+        msg = await message.answer(f"Количество детей в подвале пополнено на {temp_children}")
+        asyncio.create_task(delete_message_later(msg))
+
+        
         
 @dp.message()
 async def echo_handler(message: Message) -> None: 
