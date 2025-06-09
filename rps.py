@@ -172,6 +172,7 @@ async def join_rps_handler(message: Message) -> None:
             can_manage_video_chats=False,
             is_anonymous=False 
         )
+    print(member.status)
     session['player2'] = message.from_user.id
     session['player2_username'] = message.from_user.username
     msg = await message.answer(f"@{session['player2_username']} вошел в игру! Оба игрока должны сделать свой выбор.")
@@ -246,16 +247,16 @@ async def callback_rps_choice_handler(callback_query: CallbackQuery) -> None:
                     user_id=session['player2'],
                     custom_title="Педик"
                 )
-            except TelegramBadRequest:
-                print(TelegramBadRequest)
+            except TelegramBadRequest as e:
+                print(e.message)
             try:
                 await bot.set_chat_administrator_custom_title(
                     chat_id=callback_query.message.chat.id,
                     user_id=session['player1'],
                     custom_title="admin"
                 )
-            except TelegramBadRequest:
-                print(TelegramBadRequest)
+            except TelegramBadRequest as e:
+                print(e.message)
             game_ender(session['player1'],session["player1_username"], session['player2'],session["player2_username"], False)
             msg = await callback_query.message.answer(f"@{session['player1_username']} победил, и получает 3 фри спина!")
             asyncio.create_task(delete_message_later(msg))

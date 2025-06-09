@@ -31,8 +31,9 @@ async def command_start_handler(message: Message) -> None:
         await message.answer(f"@{message.from_user.username} получил кляп за спам блять")
         return
     try:
-        await message.answer(f"Глаз Альнура")
+        msg = await message.answer(f"Глаз Альнура")
         asyncio.create_task(delete_message_later(message, 5))
+        asyncio.create_task(delete_message_later(msg))
     except TelegramBadRequest:
         print('Trigger form group')
 
@@ -226,14 +227,78 @@ async def dice_handler(message: Message) -> None:
 @dp.message(F.from_user.username == "moonyneko")
 async def amina_message_handler(message: Message):
     if check_private_chat(message):
-        await message.answer(f"СУка кто пишет в лс тот педик ебаный")
+        await message.answer("СУка кто пишет в лс тот педик ебаный")
         return
-    start_time = datetime.time(21, 0)  # 21:00 or 9 PM
+
+    start_time = datetime.time(21, 0)
     end_time = datetime.time(8, 0)
     current_time = datetime.datetime.now(ZoneInfo("Asia/Karachi")).time()
+
     if current_time >= start_time or current_time < end_time:
+        msg = await message.answer("К сожалению Амина уже спит, но она бы написала:")
+        # Copy the original message using bot's copy_message
+        await bot.copy_message(
+            chat_id=message.chat.id,
+            from_chat_id=message.chat.id,
+            message_id=message.message_id
+        )
         await message.delete()
-        await message.answer(f"К сожалению Амина уже спит, но она бы написала:\n{message.text}")
+        asyncio.create_task(delete_message_later(msg, 10))
+
+
+# @dp.message(F.from_user.username == "Hyperdadada")
+# async def amina_message_handler(message: Message):
+#     if check_private_chat(message):
+#         await message.answer("СУка кто пишет в лс тот педик ебаный")
+#         return
+
+#     start_time = datetime.time(21, 0)  # 21:00 or 9 PM
+#     end_time = datetime.time(8, 0)
+#     current_time = datetime.datetime.now(ZoneInfo("Asia/Karachi")).time()
+
+#     custom_text = "К сожалению Амина уже спит, но она бы написала:\n"
+
+#     # For text messages: combine custom text and message text, then send as a new message.
+#     if message.content_type == "text":
+#         combined_text = f"{custom_text}{message.text}"
+#         await message.answer(combined_text)
+#         # Optionally, delete the original message afterward if needed.
+#         await message.delete()
+
+#     # For media messages with captions (e.g., photo, video, audio, document, animation)
+#     elif message.content_type in ("photo", "video", "animation", "audio", "document"):
+#         existing_caption = message.caption or ""
+#         new_caption = f"{custom_text}{existing_caption}"
+#         # First, copy the original message with the new caption
+#         await bot.copy_message(
+#             chat_id=message.chat.id,
+#             from_chat_id=message.chat.id,
+#             message_id=message.message_id,
+#             caption=new_caption
+#         )
+#         # Then, delete the original message
+#         await message.delete()
+
+#     # For stickers or other types that do not support captions, copying is the only option.
+#     elif message.content_type == "sticker":
+#         await bot.copy_message(
+#             chat_id=message.chat.id,
+#             from_chat_id=message.chat.id,
+#             message_id=message.message_id
+#         )
+#         await message.delete()
+
+#     else:
+#         # For any other message types, simply copy and then delete.
+#         await bot.copy_message(
+#             chat_id=message.chat.id,
+#             from_chat_id=message.chat.id,
+#             message_id=message.message_id
+#         )
+#         await message.delete()
+
+
+
 
 @dp.message(F.from_user.username == "awertkx")
 async def alnur_message_handler(message: Message):
